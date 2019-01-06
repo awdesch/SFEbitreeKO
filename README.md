@@ -1,72 +1,293 @@
-
-[
 [<img src="https://github.com/QuantLet/Styleguide-and-FAQ/blob/master/pictures/banner.png" width="888" alt="Visit QuantNet">](http://quantlet.de/)
 
-## [<img src="https://github.com/QuantLet/Styleguide-and-FAQ/blob/master/pictures/qloqo.png" alt="Visit QuantNet">](http://quantlet.de/) **ComparHaz** [<img src="https://github.com/QuantLet/Styleguide-and-FAQ/blob/master/pictures/QN2.png" width="60" alt="Visit QuantNet 2.0">](http://quantlet.de/)
+## [<img src="https://github.com/QuantLet/Styleguide-and-FAQ/blob/master/pictures/qloqo.png" alt="Visit QuantNet">](http://quantlet.de/) **SFEbitreeKO** [<img src="https://github.com/QuantLet/Styleguide-and-FAQ/blob/master/pictures/QN2.png" width="60" alt="Visit QuantNet 2.0">](http://quantlet.de/)
 ```yaml
 
-Name of QuantLet : ComparHaz
+Name of QuantLet : SFEbitreeKO
 
-Published in : SPL
+Published in : Statistics of Financial Markets
 
-Description : 'Compare estimated hazard function for five different models: Exponential model, 
-	       Model with flexible splines, log-logistic model, log-normal model and Weibull model. 
-               The graph shows the transitioning into homeownership'
+Description : 'Computes European/American option prices using a binomial tree for the CocaCola (KO) stock with fixed
+	       amount dividends.'
 	      
-Keywords : 'survival analysis, parametric estimation, Weibull, Log-normal, Log-logistic,
-            Exponential, flexible splines, hazard rate, R'
+Keywords : 'binomial, tree, asset, call, put, option, option-price, european-option, dividends,
+	    financial, black-scholes'
 
-Author : Alice Drube, Konstantin Göbler, Chris Kolb, Richard v. Maydell
+Author : Alice Drube
 ```
-![Picture1](ComparHaz.png)
+![Picture1](SFEbitreeKO_output.png)
 ### R Code
 ```R
 
-rm(list = ls())
+# clear variables and close windows
+rm(list = ls(all = TRUE))
+graphics.off()
 
-# set working directory setwd('C:/...') setwd('~/...') # linux/mac os
-# setwd('/Users/...') # windows
+# load packages 
+#install.packages('quantmod') 
+#install.packages('dplyr')
+# install.packages('DT')
+library(quantmod)
+library(dplyr)
+library(DT)
 
-# load packages
-libraries = c("survival", "rms", "survminer", "dplyr", "readr", "flexsurv", 
-  "ggfortify", "ggplot2")
-lapply(libraries, function(x) if (!(x %in% installed.packages())) {
-  install.packages(x)
-})
-lapply(libraries, library, quietly = TRUE, character.only = TRUE)
 
-# load dataset
-load("datfinal.RDA")
+# Data ------------------------------------------------------------------------
+cc = new.env()
 
-# define survival object
-coxparm = Surv(dat$time, dat$event, type = "right")
+getSymbols("KO", env = cc, src = "yahoo", from = as.Date("2016-01-01"), 
+           to = as.Date("2019-01-04"))
 
-# define model formula
-parmform = as.formula("coxparm ~ hhinc + rural + maxedu + region + migback + 
-  married + ever_div")
 
-# Exponential distribution
-expo = flexsurvreg(formula = parmform, data = dat, dist = "exp")
-# Weibull distribution
-weibull = flexsurvreg(formula = parmform, data = dat, dist = "weibull")
-# Log-Logistic distribution
-loglog = flexsurvreg(formula = parmform, data = dat, dist = "llogis")
-# Log-normal distribution
-lnormal = flexsurvreg(formula = parmform, data = dat, dist = "lnorm")
-# Flexible splines (Royston and Parmar 2002)
-flex.spline = flexsurvspline(coxparm ~ 1, data = dat, k = 2, scale = "odds")
+coca = cc$KO
 
-# only hazard functions as single plot
-ggplot(data.frame(summary(expo, type = "hazard")), aes(x = time)) + 
-  geom_line(aes(y = est, col = "Exponential")) + 
-  geom_line(data = data.frame(summary(weibull, type = "hazard")), 
-  aes(y = est, col = "Weibull")) + 
-  geom_line(data = data.frame(summary(loglog, 
-  type = "hazard")), aes(y = est, col = "Log-Logistic")) + 
-  geom_line(data = data.frame(summary(lnormal, 
-  type = "hazard")), aes(y = est, col = "Log-Normal")) + 
-  geom_line(data = data.frame(summary(flex.spline, 
-  type = "hazard")), aes(y = est, col = "Flexible Splines")) + 
-  labs(x = "Time (years)", 
-  y = "Hazard Function", col = "Models") + theme_classic()
+df = coca %>% data.frame(date = index(coca), coredata(coca)) %>% 
+  select(KO.Open:date) %>% 
+  mutate(year = strftime(date, "%Y"))
+df = df[, c("year", "date", "KO.Open", "KO.High", "KO.Low", "KO.Close", 
+             "KO.Volume", "KO.Adjusted")]
+
+
+
+# input parameters
+print("Please select Price of Underlying Asset s0 from the Data, choose 
+      Exercise Price k, input Domestic Interest Rate per Year i,")
+print("calculate Volatility per Year sig, choose Time to Expiration (Years) t,
+      Number of steps n, type")
+print("yields vector [s0, k, i, sig, t, n, type]=")
+
+
+# vola = df %>% group_by(year) %>% summarise(sig = sd(KO.Open, na.rm = TRUE))
+volatility = volatility(OHLC = coca, n = 4, calc = "garman.klass", N = 1, 
+                         mean0 = TRUE)
+vol = volatility %>% 
+  data.frame(date = index(volatility), coredata(volatility)) %>% 
+  mutate(year = strftime(date, "%Y")) %>% 
+  group_by(year) %>% 
+  summarise(sig = mean(coredata.volatility., na.rm = T))
+rm(volatility, vola)
+
+s0 = df[1, 3]      # Stock price
+k = 42.5           # Exercise price
+i = 0.0125         # Rate of interest
+sig = vol$sig[2]   # Volatility
+t = 0.5            # Time to expiration
+n = 5              # Number of intervals
+type = 0           # 0 is American/1 is European
+
+
+
+# check conditions ------------------------------------------------------------
+if (s0 <= 0) {
+    print("SFEBiTree: Price of Underlying Asset should be positive! Please 
+          input again. s0=")
+    s0 = scan()
+}
+if (k < 0) {
+    print("SFEBiTree: Exercise price couldnot be negative! Please input again. 
+          k=")
+    k = scan()
+}
+if (sig < 0) {
+    print("SFEBiTree: Volatility should be positive! Please input again. sig=")
+    sig = scan()
+}
+if (t <= 0) {
+    print("SFEBiTree: Time to expiration should be positive! Please input 
+          again. t=")
+    t = scan()
+}
+if (n < 1) {
+    print("SFEBiTree: Number of steps should be at least equal to 1! Please 
+          input again. n=")
+    n = scan()
+}
+
+
+# input parameters ------------------------------------------------------------
+
+print(" ")
+print("Please input option choice (1 for call, 0 for put) flag, Number of pay 
+      outs nodiv, time point of dividend payoff tdiv")
+print("dividend in currency units for each time point pdiv as: 
+      [1 2 0.25 0.5 1 1]")
+print("[flag, nodiv tdiv pdiv ]=")
+para2 = scan()
+
+while (length(para2) < (2 * nodiv + 2)) {
+    print("Not enough input arguments. Please input in 1*(2+2*nodiv) vector 
+          form like [1 2 0.25 0.5 1 1]")
+    print("[flag, nodiv tdiv pdiv ]=")
+    para2 = scan()
+}
+
+flag = 0              # 0 for put option choice, 1 for call option 
+nodiv = 2             # Times of dividend payoff
+tdiv = c(0.25, 0.5)   # Time point of dividend payoff
+pdiv = c(1, 1)        # Dividend in currency units
+
+if (t < max(tdiv)) {
+    print("SFEBiTree: Payoff shall happend before expiration! Please input tdiv
+          again as [0.25 0.5]. tdiv=")
+    tdiv = scan()
+}
+
+if (sum(pdiv) < 0) {
+    print("SFEBiTree: Dividend must be nonnegative! Please input pdiv again as
+          [1 1]. pdiv=")
+    pdiv = scan()
+}
+
+# Main computation ------------------------------------------------------------
+dt = t/n                                      # Interval of step
+u = exp(sig * sqrt(dt))                       # Up movement parameter u
+d = 1/u                                       # Down movement parameter d
+b = i                                         # Costs of carry
+p = 0.5 + 0.5 * (b - sig^2/2) * sqrt(dt)/sig  # Probability of up movement
+tdivn = floor(tdiv/t * n - 1e-04) + 1
+s = matrix(1, n + 1, n + 1) * s0
+un = rep(1, n + 1) - 1
+un[n + 1] = 1
+dm = t(un)
+um = matrix(0, 0, n + 1)
+j = 1
+
+
+while (j < n + 1) {
+  d1 = cbind(t(rep(1, n - j) - 1), t((rep(1, j + 1) * d)^(seq(1, j + 1) - 1)))
+  dm = rbind(dm, d1)  # Down movement dynamics
+  u1 = cbind(t(rep(1, n - j) - 1), t((rep(1, j + 1) * u)^((seq(j, 0)))))
+  um = rbind(um, u1)  # Up movement dynamics
+  j = j + 1
+}
+
+um = t(rbind(un, um))
+dm = t(dm)
+s = s[1, 1] * um * dm  # stock price development
+j = 1
+m = matrix(0, nrow(s), ncol(s))
+
+while (j <= nodiv) {
+  m[, (tdivn[j] + 1):(n + 1)] = m[, (tdivn[j] + 1):(n + 1)] - pdiv[j]
+  j = j + 1
+}
+loopj = seq(n + 1, 1)
+for (j in loopj) {
+  hmat = rbind(s[j, 1:6] + m[j, 1:6], matrix(0, 1, n + 1))
+  s[j, 1:6] = pmax(hmat[1, ], hmat[2, ])
+}
+
+Stock_Price = s
+s = s[nrow(s):1, ]  # Rearangement
+opt = matrix(0, nrow(s), ncol(s))
+
+# Option is an American call
+if ((flag == 1) && (type == 0)) {
+  opt[, n + 1] = pmax(s[, n + 1] - k, 0) # Determine option values from prices
+  loopv = seq(n, 1)
+  for (j in loopv) {
+      l = seq(1, j)
+      # Probable option values discounted back one time step
+      discopt = ((1 - p) * opt[l, j + 1] + p * opt[l + 1, j + 1]) * exp(-b * dt)
+      # Option value is max of current price - X or discopt
+      opt[, j] = rbind(t(t(pmax(s[l, j] - k, discopt))), t(t(rep(0, n + 1 - 
+                                                                    j))))
+    }
+  American_Call_Price = opt[nrow(opt):1, ]
+  print(American_Call_Price)
+  print(" ")
+  print("The price of the option at time t_0 is")
+  print(American_Call_Price[n + 1, 1])
+}
+
+if ((flag == 1) && (type == 1)) {
+  # # Option is a European call
+  opt[, n + 1] = pmax(s[, n + 1] - k, 0)  # Determine option values from prices
+  loopv = seq(n, 1)
+  for (j in loopv) {
+      l = seq(1, j)
+      # Probable option values discounted back one time step
+      discopt = ((1 - p) * opt[l, j + 1] + p * opt[l + 1, j + 1]) * exp(-b * 
+                                                                           dt)
+      # Option value
+      opt[, j] = rbind(t(t(discopt)), t(t(rep(0, n + 1 - j))))
+  }
+  European_Call_Price = opt[nrow(opt):1, ]
+  print(European_Call_Price)
+  print(" ")
+  print("The price of the option at time t_0 is")
+  print(European_Call_Price[n + 1, 1])
+}
+
+if ((flag == 0) && (type == 0)) {
+  # # Option is an American put
+  opt[, n + 1] = pmax(k - s[, n + 1], 0)  # Determine option values from prices
+  loopv = seq(n, 1)
+  for (j in loopv) {
+      l = seq(1, j)
+      # Probable option values discounted back one time step
+      discopt = ((1 - p) * opt[l, j + 1] + p * opt[l + 1, j + 1]) * exp(-b * 
+                                                                           dt)
+      # Option value is max of X - current price or discopt
+      opt[, j] = rbind(t(t(pmax(k - s[l, j], discopt))), t(t(rep(0, n + 1 - 
+                                                                    j))))
+  }
+  American_Put_Price = as.data.frame(opt[nrow(opt):1, ] ) 
+  print(American_Put_Price)
+  print(" ")
+  print("The price of the option at time t_0 is")
+  print(American_Put_Price[n + 1, 1])
+}
+
+if ((flag == 0) && (type == 1)) {
+  # # Option is a European put
+  opt[, n + 1] = pmax(k - s[, n + 1], 0)  # Determine option values from prices
+  loopv = seq(n, 1)
+  for (j in loopv) {
+      l = seq(1, j)
+      # Probable option values discounted back one time step
+      discopt = ((1 - p) * opt[l, j + 1] + p * opt[l + 1, j + 1]) * exp(-b * 
+                                                                           dt)
+      # Option value
+      opt[, j] = rbind(t(t(discopt)), t(t(rep(0, n + 1 - j))))
+  }
+  European_Put_Price = opt[nrow(opt):1, ]
+  print(European_Put_Price)
+  print(" ")
+  print("The price of the option at time t_0 is")
+  print(European_Put_Price[n + 1, 1])
+}
+
+# Adjustions ------------------------------------------------------------------
+
+stockprice = 0
+for (i in c(0:n+1)) {
+  stockprice[i] = s[i,i]
+}
+stockprice = as.data.frame(stockprice) %>% mutate(no = c(1:(n+1))) %>% 
+  arrange(desc(no)) %>% select(stockprice)
+
+
+time1 = 0
+for (i in c(0:n)) {
+  time1[i] = dt * i 
+}
+
+time = as.data.frame(matrix(c(0, time1), nrow = 1, ncol = n+1))
+rm(time1)
+
+
+stock_option = function(option){
+  stockprice %>% bind_cols(option) %>% 
+    bind_rows(time,.id = NULL) %>% 
+    print()
+}
+
+#choose option
+American_Put = stock_option(option = American_Put_Price) 
+#American_Call = stock_option(option = American_Call_Price)
+#European_Call = stock_option(option = European_Call_Price)
+#European_Put = stock_option(option = European_Put_Price)
+
+
 ```
