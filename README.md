@@ -9,7 +9,8 @@ Published in : Statistics of Financial Markets
 
 Description : 'Computes European/American option prices using a binomial tree for the CocaCola (KO) stock with fixed
 	       amount dividends.
-	       This quantlet contains a dataset "KO_Bloomberg" and the full code. Make sure you download the dataset, specify 		     a path and then you can run the Quantlet.'
+	       This quantlet contains a dataset "KO_Bloomberg" and the full code. 
+	       Make sure you download the dataset, specify a path and then run the Quantlet.'
 	      
 Keywords : 'binomial, tree, asset, call, put, option, option-price, european-option, dividends,
 	    financial, black-scholes'
