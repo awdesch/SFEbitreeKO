@@ -1,9 +1,18 @@
 
+# Set Working Directory -------------------------------------------------------
+# setwd('C:/...') 
+# setwd('~/...')                # linux/mac os
+# setwd('/Users/...')           # windows
+
+path <- "..."                   #specified by the user
+setwd(path)
+
 # clear variables and close windows
 rm(list = ls(all = TRUE))
 graphics.off()
 
-# load packages 
+
+# load packages ---------------------------------------------------------------
 #install.packages('quantmod') 
 #install.packages('dplyr')
 #library(quantmod)              #only need this if you download data from yahoo
@@ -11,8 +20,8 @@ library(dplyr)
 library(DT)
 library(readr)
 
-# Data ------------------------------------------------------------------------
 
+# Data ------------------------------------------------------------------------
 KO = read_delim("KO_Bloomberg.csv", ";", escape_double = FALSE, 
                 locale = locale(decimal_mark = ","), trim_ws = TRUE)
 KO = KO[, c("Date", "KO.Open", "KO.High", "KO.Low", "KO.Close", 
@@ -57,7 +66,6 @@ n = 5              # Number of intervals
 type = 0           # 0 is American/1 is European
 
 
-
 # check conditions ------------------------------------------------------------
 if (s0 <= 0) {
     print("SFEBiTree: Price of Underlying Asset should be positive! Please 
@@ -86,7 +94,6 @@ if (n < 1) {
 
 
 # input parameters ------------------------------------------------------------
-
 print(" ")
 print("Please input option choice (1 for call, 0 for put) flag, Number of pay 
       outs nodiv, time point of dividend payoff tdiv")
@@ -118,6 +125,7 @@ if (sum(pdiv) < 0) {
           [1 1]. pdiv=")
     pdiv = scan()
 }
+
 
 # Main computation ------------------------------------------------------------
 dt = t/n                                      # Interval of step
@@ -239,8 +247,8 @@ if ((flag == 0) && (type == 1)) {
   print(European_Put_Price[n + 1, 1])
 }
 
-# Adjustments -----------------------------------------------------------------
 
+# Adjustments -----------------------------------------------------------------
 stockprice = 0
 for (i in c(0:n+1)) {
   stockprice[i] = s[i,i]
