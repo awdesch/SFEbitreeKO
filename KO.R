@@ -6,50 +6,51 @@ graphics.off()
 # load packages 
 #install.packages('quantmod') 
 #install.packages('dplyr')
-# install.packages('DT')
-library(quantmod)
+#library(quantmod)              #only need this if you download data from yahoo
 library(dplyr)
 library(DT)
-
+library(readr)
 
 # Data ------------------------------------------------------------------------
-cc = new.env()
 
-getSymbols("KO", env = cc, src = "yahoo", from = as.Date("2016-01-01"), 
-           to = as.Date("2019-01-04"))
+KO = read_delim("KO_Bloomberg.csv", ";", escape_double = FALSE, 
+                locale = locale(decimal_mark = ","), trim_ws = TRUE)
+KO = KO[, c("Date", "KO.Open", "KO.High", "KO.Low", "KO.Close", 
+            "KO.Volume")]
 
-
-coca = cc$KO
-
-df = coca %>% data.frame(date = index(coca), coredata(coca)) %>% 
-  select(KO.Open:date) %>% 
-  mutate(year = strftime(date, "%Y"))
-df = df[, c("year", "date", "KO.Open", "KO.High", "KO.Low", "KO.Close", 
-             "KO.Volume", "KO.Adjusted")]
+#instead of using Bloomberg, download the data from yahoo finance
+#cc = new.env()
+#getSymbols("KO", env = cc, src = "yahoo", from = as.Date("2016-01-01"), 
+#           to = as.Date("2019-01-04"))
+#coca = cc$KO
 
 
-
-# input parameters
+# input parameters ------------------------------------------------------------
 print("Please select Price of Underlying Asset s0 from the Data, choose 
       Exercise Price k, input Domestic Interest Rate per Year i,")
 print("calculate Volatility per Year sig, choose Time to Expiration (Years) t,
       Number of steps n, type")
 print("yields vector [s0, k, i, sig, t, n, type]=")
 
-
-# vola = df %>% group_by(year) %>% summarise(sig = sd(KO.Open, na.rm = TRUE))
-volatility = volatility(OHLC = coca, n = 4, calc = "garman.klass", N = 1, 
+#calculate volatility
+KOxts = xts(KO, KO$Date) 
+KOxts = subset(KOxts, select = -c(Date) )
+storage.mode(KOxts) = "numeric"
+KOxts = na.locf(KOxts)
+volatility = volatility(OHLC = KOxts, n = 3, calc = "garman.klass", N = 1, 
                          mean0 = TRUE)
 vol = volatility %>% 
   data.frame(date = index(volatility), coredata(volatility)) %>% 
   mutate(year = strftime(date, "%Y")) %>% 
   group_by(year) %>% 
   summarise(sig = mean(coredata.volatility., na.rm = T))
-rm(volatility, vola)
+rm(volatility, KOxts)
 
-s0 = df[1, 3]      # Stock price
-k = 42.5           # Exercise price
-i = 0.0125         # Rate of interest
+KO = KO %>% arrange(Date) %>% filter(strftime(Date, "%Y") >2017)
+
+s0 = KO[1,2]       # Stock price, select the price you want from KO
+k = 45.8           # Exercise price
+i = 0.0175         # Rate of interest (INTERNET!)
 sig = vol$sig[2]   # Volatility
 t = 0.5            # Time to expiration
 n = 5              # Number of intervals
@@ -173,7 +174,7 @@ if ((flag == 1) && (type == 0)) {
       opt[, j] = rbind(t(t(pmax(s[l, j] - k, discopt))), t(t(rep(0, n + 1 - 
                                                                     j))))
     }
-  American_Call_Price = opt[nrow(opt):1, ]
+  American_Call_Price = as.data.frame(opt[nrow(opt):1, ])
   print(American_Call_Price)
   print(" ")
   print("The price of the option at time t_0 is")
@@ -192,7 +193,7 @@ if ((flag == 1) && (type == 1)) {
       # Option value
       opt[, j] = rbind(t(t(discopt)), t(t(rep(0, n + 1 - j))))
   }
-  European_Call_Price = opt[nrow(opt):1, ]
+  European_Call_Price = as.data.frame(opt[nrow(opt):1, ])
   print(European_Call_Price)
   print(" ")
   print("The price of the option at time t_0 is")
@@ -231,7 +232,7 @@ if ((flag == 0) && (type == 1)) {
       # Option value
       opt[, j] = rbind(t(t(discopt)), t(t(rep(0, n + 1 - j))))
   }
-  European_Put_Price = opt[nrow(opt):1, ]
+  European_Put_Price = as.data.frame(opt[nrow(opt):1, ])
   print(European_Put_Price)
   print(" ")
   print("The price of the option at time t_0 is")
@@ -264,7 +265,7 @@ stock_option = function(option){
 }
 
 #choose option
-American_Put = stock_option(option = American_Put_Price) 
+#American_Put = stock_option(option = American_Put_Price) 
 #American_Call = stock_option(option = American_Call_Price)
 #European_Call = stock_option(option = European_Call_Price)
 #European_Put = stock_option(option = European_Put_Price)
