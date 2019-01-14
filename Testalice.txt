@@ -17,7 +17,7 @@ Keywords : 'binomial, tree, asset, call, put, option, option-price, european-opt
 
 Author : Alice Drube
 ```
-![Picture1](SFEbitreeKO_output.png)
+
 ### R Code
 ```R
 
