@@ -29,6 +29,5 @@ Input:
 
 Output: binomial trees and price of option
 
-Example: 'User inputs parameters [s0, k, i, sig, t, n, type] like [42.34, 42.5, 0.0125, 0.005, 0.5, 5, 1], 
-          [flag (1 for call, 0 for put), nodiv, tdiv, pdiv] as [1, 2, 0.25, 0.25, 1, 1], then call price is shown.'
-
+Example: 'User inputs parameters [s0, k, i, sig, t, n, type] like [45.54, 45.8, 0.0175, 0.0086, 0.5, 5, 1], 
+          [flag (1 for call, 0 for put), nodiv, tdiv, pdiv] as [0, 2, 0.25, 0.25, 1, 1], then call price is shown.'
