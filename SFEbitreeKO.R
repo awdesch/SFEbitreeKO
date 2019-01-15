@@ -47,7 +47,7 @@ vol                 = volatility %>%
                       summarise(sig = mean(coredata.volatility., na.rm = T))
 rm(volatility, KOxts)
 
-KO   = KO %>% arrange(Date) %>% filter(strftime(Date, "%Y") >2017)
+KO    = KO %>% arrange(Date) %>% filter(strftime(Date, "%Y") >2017)
 
 s0    = KO[1,2]        # Stock price, select the price you want from KO
 k     = 45.8           # Exercise price
