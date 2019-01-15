@@ -21,12 +21,13 @@ Author : Alice Drube
 ### R Code
 ```R
 
+
 # Set Working Directory -------------------------------------------------------
 # setwd('C:/...') 
-# setwd('~/...')                # linux/mac os
-# setwd('/Users/...')           # windows
+# setwd('~/...')               # linux/mac os
+# setwd('/Users/...')          # windows
 
-path <-="..."                   #specified by the user
+# path = "mypath"                  #specified by the user
 setwd(path)
 
 # clear variables and close windows
@@ -35,12 +36,10 @@ graphics.off()
 
 
 # load packages ---------------------------------------------------------------
-#install.packages('quantmod') 
-#install.packages('dplyr')
-#library(quantmod)              #only need this if you download data from yahoo
-library(dplyr)
-library(DT)
-library(readr)
+libraries = c("dplyr", "DT", "readr","stats","TTR","xts", "quantmod")
+lapply(libraries,function(x)if(!(x %in% installed.packages())){install.packages(x)})
+lapply(libraries,require,quietly=TRUE,character.only=TRUE)
+
 
 
 # Data ------------------------------------------------------------------------
@@ -50,118 +49,57 @@ KO = KO[, c("Date", "KO.Open", "KO.High", "KO.Low", "KO.Close",
             "KO.Volume")]
 
 #instead of using Bloomberg, download the data from yahoo finance
-#cc = new.env()
+#cc   = new.env()
 #getSymbols("KO", env = cc, src = "yahoo", from = as.Date("2016-01-01"), 
 #           to = as.Date("2019-01-04"))
 #coca = cc$KO
 
 
-# input parameters ------------------------------------------------------------
-print("Please select Price of Underlying Asset s0 from the Data, choose 
-      Exercise Price k, input Domestic Interest Rate per Year i,")
-print("calculate Volatility per Year sig, choose Time to Expiration (Years) t,
-      Number of steps n, type")
-print("yields vector [s0, k, i, sig, t, n, type]=")
-
 #calculate volatility
-KOxts = xts(KO, KO$Date) 
-KOxts = subset(KOxts, select = -c(Date) )
+KOxts               = xts(KO, KO$Date) 
+KOxts               = subset(KOxts, select = -c(Date) )
 storage.mode(KOxts) = "numeric"
-KOxts = na.locf(KOxts)
-volatility = volatility(OHLC = KOxts, n = 3, calc = "garman.klass", N = 1, 
-                         mean0 = TRUE)
-vol = volatility %>% 
-  data.frame(date = index(volatility), coredata(volatility)) %>% 
-  mutate(year = strftime(date, "%Y")) %>% 
-  group_by(year) %>% 
-  summarise(sig = mean(coredata.volatility., na.rm = T))
+KOxts               = na.locf(KOxts)
+volatility          = volatility(OHLC = KOxts, n = 3, calc = "garman.klass", 
+                                 N = 1, mean0 = TRUE)
+vol                 = volatility %>% 
+                      data.frame(date = index(volatility), 
+                                 coredata(volatility)) %>% 
+                      mutate(year = strftime(date, "%Y")) %>% 
+                      group_by(year) %>% 
+                      summarise(sig = mean(coredata.volatility., na.rm = T))
 rm(volatility, KOxts)
 
-KO = KO %>% arrange(Date) %>% filter(strftime(Date, "%Y") >2017)
+KO    = KO %>% arrange(Date) %>% filter(strftime(Date, "%Y") >2017)
 
-s0 = KO[1,2]       # Stock price, select the price you want from KO
-k = 45.8           # Exercise price
-i = 0.0175         # Rate of interest (INTERNET!)
-sig = vol$sig[2]   # Volatility
-t = 0.5            # Time to expiration
-n = 5              # Number of intervals
-type = 0           # 0 is American/1 is European
+s0    = KO[1,2]        # Stock price, select the price you want from KO
+k     = 45.8           # Exercise price
+i     = 0.0175         # Rate of interest (INTERNET!)
+sig   = vol$sig[2]     # Volatility
+t     = 0.5            # Time to expiration
+n     = 5              # Number of intervals
+type  = 0              # 0 is American/1 is European
 
+flag  = 0              # 0 for put option choice, 1 for call option 
+nodiv = 2              # Times of dividend payoff
+tdiv  = c(0.25, 0.5)   # Time point of dividend payoff
+pdiv  = c(1, 1)        # Dividend in currency units
 
-# check conditions ------------------------------------------------------------
-if (s0 <= 0) {
-    print("SFEBiTree: Price of Underlying Asset should be positive! Please 
-          input again. s0=")
-    s0 = scan()
-}
-if (k < 0) {
-    print("SFEBiTree: Exercise price couldnot be negative! Please input again. 
-          k=")
-    k = scan()
-}
-if (sig < 0) {
-    print("SFEBiTree: Volatility should be positive! Please input again. sig=")
-    sig = scan()
-}
-if (t <= 0) {
-    print("SFEBiTree: Time to expiration should be positive! Please input 
-          again. t=")
-    t = scan()
-}
-if (n < 1) {
-    print("SFEBiTree: Number of steps should be at least equal to 1! Please 
-          input again. n=")
-    n = scan()
-}
-
-
-# input parameters ------------------------------------------------------------
-print(" ")
-print("Please input option choice (1 for call, 0 for put) flag, Number of pay 
-      outs nodiv, time point of dividend payoff tdiv")
-print("dividend in currency units for each time point pdiv as: 
-      [1 2 0.25 0.5 1 1]")
-print("[flag, nodiv tdiv pdiv ]=")
-para2 = scan()
-
-while (length(para2) < (2 * nodiv + 2)) {
-    print("Not enough input arguments. Please input in 1*(2+2*nodiv) vector 
-          form like [1 2 0.25 0.5 1 1]")
-    print("[flag, nodiv tdiv pdiv ]=")
-    para2 = scan()
-}
-
-flag = 0              # 0 for put option choice, 1 for call option 
-nodiv = 2             # Times of dividend payoff
-tdiv = c(0.25, 0.5)   # Time point of dividend payoff
-pdiv = c(1, 1)        # Dividend in currency units
-
-if (t < max(tdiv)) {
-    print("SFEBiTree: Payoff shall happend before expiration! Please input tdiv
-          again as [0.25 0.5]. tdiv=")
-    tdiv = scan()
-}
-
-if (sum(pdiv) < 0) {
-    print("SFEBiTree: Dividend must be nonnegative! Please input pdiv again as
-          [1 1]. pdiv=")
-    pdiv = scan()
-}
-
+SFEbitreeKO = function(s0, k, i, sig, t, n , type, flag, nodiv, tdiv, pdiv){
 
 # Main computation ------------------------------------------------------------
-dt = t/n                                      # Interval of step
-u = exp(sig * sqrt(dt))                       # Up movement parameter u
-d = 1/u                                       # Down movement parameter d
-b = i                                         # Costs of carry
-p = 0.5 + 0.5 * (b - sig^2/2) * sqrt(dt)/sig  # Probability of up movement
-tdivn = floor(tdiv/t * n - 1e-04) + 1
-s = matrix(1, n + 1, n + 1) * s0
-un = rep(1, n + 1) - 1
+dt        = t/n                                       # Interval of step
+u         = exp(sig * sqrt(dt))                       # Up movement parameter u
+d         = 1/u                                       # Down movement par. d
+b         = i                                         # Costs of carry
+p         = 0.5 + 0.5 * (b - sig^2/2) * sqrt(dt)/sig  # Prob. of up movement
+tdivn     = floor(tdiv/t * n - 1e-04) + 1
+s         = matrix(1, n + 1, n + 1) * s0
+un        = rep(1, n + 1) - 1
 un[n + 1] = 1
-dm = t(un)
-um = matrix(0, 0, n + 1)
-j = 1
+dm        = t(un)
+um        = matrix(0, 0, n + 1)
+j         = 1
 
 
 while (j < n + 1) {
@@ -169,14 +107,14 @@ while (j < n + 1) {
   dm = rbind(dm, d1)  # Down movement dynamics
   u1 = cbind(t(rep(1, n - j) - 1), t((rep(1, j + 1) * u)^((seq(j, 0)))))
   um = rbind(um, u1)  # Up movement dynamics
-  j = j + 1
+  j  = j + 1
 }
 
 um = t(rbind(un, um))
 dm = t(dm)
-s = s[1, 1] * um * dm  # stock price development
-j = 1
-m = matrix(0, nrow(s), ncol(s))
+s  = s[1, 1] * um * dm  # stock price development
+j  = 1
+m  = matrix(0, nrow(s), ncol(s))
 
 while (j <= nodiv) {
   m[, (tdivn[j] + 1):(n + 1)] = m[, (tdivn[j] + 1):(n + 1)] - pdiv[j]
@@ -189,8 +127,8 @@ for (j in loopj) {
 }
 
 Stock_Price = s
-s = s[nrow(s):1, ]  # Rearangement
-opt = matrix(0, nrow(s), ncol(s))
+s           = s[nrow(s):1, ]  # Rearangement
+opt         = matrix(0, nrow(s), ncol(s))
 
 # Option is an American call
 if ((flag == 1) && (type == 0)) {
@@ -295,8 +233,24 @@ stock_option = function(option){
 }
 
 #choose option
-#American_Put = stock_option(option = American_Put_Price) 
-#American_Call = stock_option(option = American_Call_Price)
-#European_Call = stock_option(option = European_Call_Price)
-#European_Put = stock_option(option = European_Put_Price)
+  if ((flag == 0) && (type == 1)) {
+    # Option is a European put
+    European_Put  = stock_option(option = European_Put_Price)
+  }
+  if ((flag == 0) && (type == 0)) {
+    # Option is an American put
+    American_Put  = stock_option(option = American_Put_Price) 
+  }
+  if ((flag == 1) && (type == 1)) {
+    # Option is a European call
+    European_Call = stock_option(option = European_Call_Price)
+  }
+  if ((flag == 1) && (type == 0)) {
+    # Option is an American call
+    American_Call = stock_option(option = American_Call_Price)
+  }
+}
+
+
+SFEbitreeKO(s0, k, i, sig, t, n , type, flag, nodiv, tdiv, pdiv)
 ```
