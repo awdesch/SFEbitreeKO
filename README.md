@@ -27,7 +27,7 @@ Author : Alice Drube
 # setwd('~/...')               # linux/mac os
 # setwd('/Users/...')          # windows
 
-# path = "mypath"                  #specified by the user
+# path = "mypath"              #specified by the user
 setwd(path)
 
 # clear variables and close windows
